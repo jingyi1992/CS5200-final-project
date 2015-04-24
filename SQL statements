@@ -1,0 +1,181 @@
+create database drivingschool;
+use drivingschool;
+
+CREATE TABLE user(
+username VARCHAR(20) PRIMARY KEY UNIQUE NOT NULL ,
+password VARCHAR(20) NOT NULL,
+auth ENUM('admin','coach','student') NOT NULL
+
+);
+
+INSERT INTO user VALUES('alice','alice','admin');
+
+CREATE TABLE studentInfo(
+sno INT(8) PRIMARY KEY UNIQUE NOT NULL,
+sname VARCHAR(20) NOT NULL,
+sex ENUM('Male', 'Female') NOT NULL,
+age INT(3),
+identify VARCHAR(18) UNIQUE NOT NULL,
+tel VARCHAR(15),
+car_type VARCHAR(4) NOT NULL,
+enroll_time DATE NOT NULL,
+leave_time DATE,
+scondition ENUM('Study', 'Finish', 'Quit') NOT NULL,
+s_text TEXT
+);
+
+CREATE TABLE driverInfo(
+dno INT(8) PRIMARY KEY UNIQUE NOT NULL,
+dname VARCHAR(20) NOT NULL,
+sex ENUM('Male', 'Female') NOT NULL,
+age INT(3),
+identify VARCHAR(18) UNIQUE NOT NULL,
+tel VARCHAR(15),
+car_type VARCHAR(4) NOT NULL,
+enroll_time DATE NOT NULL,
+s_text TEXT
+);
+
+CREATE TABLE driverComment(
+id INT(8) PRIMARY KEY UNIQUE NOT NULL AUTO_INCREMENT,
+dno INT(8) UNIQUE NOT NULL,
+comment_time DATE,
+comment_name VARCHAR(20),
+c_text TEXT,
+CONSTRAINT  comment_fk  FOREIGN KEY (dno)
+REFERENCES  driverInfo(dno)
+on delete cascade
+);
+
+CREATE TABLE schoolComment(
+id INT(8) PRIMARY KEY UNIQUE NOT NULL AUTO_INCREMENT,
+sno INT(8) UNIQUE NOT NULL,
+comment_time DATE,
+s_text TEXT,
+CONSTRAINT  scomment_fk  FOREIGN KEY (sno)
+REFERENCES  studentInfo(sno)
+on delete cascade
+);
+
+CREATE TABLE studentComment(
+id INT(8) PRIMARY KEY UNIQUE NOT NULL AUTO_INCREMENT,
+dno INT(8) UNIQUE NOT NULL,
+comment_time DATE,
+s_text TEXT,
+CONSTRAINT  stcomment_fk  FOREIGN KEY (dno)
+REFERENCES  driverInfo(dno)
+on delete cascade
+);
+
+
+CREATE INDEX index_stu_name ON studentInfo(sname);
+CREATE INDEX index_car ON studentInfo(car_type);
+ALTER TABLE studentInfo ADD INDEX index_con(scondition);
+
+CREATE TABLE healthInfo(
+id INT(8) PRIMARY KEY UNIQUE NOT NULL AUTO_INCREMENT,
+sno INT(8) UNIQUE NOT NULL,
+sname VARCHAR(20) NOT NULL,
+height FLOAT,
+weight FLOAT,
+differentiate ENUM('Normal', 'Weak', 'Blindness'),
+left_sight FLOAT,
+right_sight FLOAT,
+left_ear ENUM('Normal', 'Weak'),
+right_ear ENUM('Normal', 'Weak'),
+legs ENUM('Normal', 'Different'),
+pressure ENUM('Normal', 'High', 'Low'),
+history VARCHAR(50),
+h_text TEXT,
+CONSTRAINT  health_fk  FOREIGN KEY (sno)
+REFERENCES  studentInfo(sno)
+on delete cascade
+);
+
+CREATE INDEX index_h_name ON healthInfo(sname);	
+	
+CREATE TABLE courseInfo(
+cno INT(4) PRIMARY KEY NOT NULL UNIQUE,
+cname VARCHAR(20) NOT NULL UNIQUE,
+before_cour INT(4) NOT NULL DEFAULT 0
+);
+
+INSERT INTO courseInfo VALUES(1,'Written test',0);
+INSERT INTO courseInfo VALUES(2,'Parking test',1);
+INSERT INTO courseInfo VALUES(3,'Road test',2);
+
+CREATE TABLE gradeInfo(
+id INT(8) PRIMARY KEY UNIQUE NOT NULL AUTO_INCREMENT,
+sno INT(8) NOT NULL,
+cno INT(4) NOT NULL,
+last_time DATE,
+times INT(4) DEFAULT 1,
+grade FLOAT DEFAULT 0,
+CONSTRAINT  grade_sno_fk  FOREIGN KEY (sno)
+REFERENCES  studentInfo(sno)
+on delete cascade,
+CONSTRAINT  grade_cno_fk  FOREIGN KEY (cno)
+REFERENCES  courseInfo(cno)
+on delete cascade
+);
+
+CREATE TABLE licenseInfo(
+id INT(8) PRIMARY KEY UNIQUE NOT NULL AUTO_INCREMENT,
+sno INT(8) UNIQUE NOT NULL,
+sname VARCHAR(20) NOT NULL,
+lno VARCHAR(18) UNIQUE NOT NULL,
+receive_time DATE,
+receive_name VARCHAR(20),
+l_text TEXT,
+CONSTRAINT  license_fk  FOREIGN KEY (sno)
+REFERENCES  studentInfo(sno)
+on delete cascade
+);
+
+
+ALTER TABLE licenseInfo ADD INDEX index_license_name(sname);
+ALTER TABLE licenseInfo ADD INDEX index_receive_name(receive_name);
+
+CREATE VIEW grade_view
+AS SELECT g.id,g.sno,s.sname,c.cname,last_time,times,grade 
+FROM studentInfo s,courseInfo c,gradeInfo g
+WHERE g.sno=s.sno AND g.cno=c.cno;
+
+
+/*DELIMITER &&
+CREATE  TRIGGER  license_stu  AFTER  INSERT
+ON  licenseInfo  FOR  EACH  ROW  
+BEGIN
+UPDATE studentInfo SET leave_time=NEW.receive_time,scondition= '结业' 
+WHERE sno=NEW.sno;
+END
+&&
+DELIMITER ;
+
+----------------------------------------------------
+*/
+DELIMITER &&
+CREATE  TRIGGER  update_sname  AFTER  UPDATE
+ON  studentInfo  FOR  EACH  ROW  
+BEGIN
+UPDATE healthInfo SET sname=NEW.sname WHERE sno=NEW.sno;
+UPDATE licenseInfo SET sname=NEW.sname WHERE sno=NEW.sno;
+END
+&&
+DELIMITER ;
+
+
+-------------------------------------------------------
+
+DELIMITER &&
+CREATE  TRIGGER  delete_stu  AFTER  DELETE
+ON  studentInfo  FOR  EACH  ROW  
+BEGIN
+DELETE FROM gradeInfo WHERE sno=OLD.sno;
+DELETE FROM healthInfo WHERE sno=OLD.sno;
+DELETE FROM licenseInfo WHERE sno=OLD.sno;
+END
+&&
+DELIMITER ;
+
+
